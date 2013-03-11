@@ -58,7 +58,27 @@ cl.on('online',
             logger.info("sent request to join room: " + roomJid);
           });
         });
+cl.on('stanza',
+      function(stanza) {
         
+        // steps to bot bliss:
+        // we need to keep our own track of users in each room
+        // when we log in, we get a bunch of presence messages. we need to 
+        // cache those, because they contain the role data for users
+        // which we need to decide which users' messages to respond to
+        
+        // 1. watch for presence messages. cache those in a room-specific roster, along with their role information.
+        // 2. after the initial flurry, treat new presence messages as users joining - send them the current video time, with /video catchup mm:ss
+        //      this is important in case the bot crashes; we don't want it
+        //      to send a huge flurry of messages out to everyone. 
+        // 3. watch for chat messages. if not from a moderator, ignore
+        //      if from a moderator, look for /video start and /video stop
+        //      and /video time. Build a model to keep track of 
+        
+        
+        logger.info(stanza);
+	    });
+
 cl.on('error',
       function(e) {
 	      logger.error(e);
