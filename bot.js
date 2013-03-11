@@ -77,6 +77,8 @@ cl.on('stanza',
         var fromNick;
         
         var fromRoom = fromPieces[0];
+
+        var vidStatus = roomVideoStatus[fromRoom];
         
         if(fromPieces.length==1) {
           // it's a subject message that comes direct from the room.
@@ -102,9 +104,7 @@ cl.on('stanza',
             delete roomRosters[fromRoom][fromNick];
           } else {
             logger.info(stanza.attrs.from + " joined room.");
-            
-            logger.info(stanza);
-            
+
             _.each(stanza.children, function(child) {
               if(child.attrs.xmlns=="http://jabber.org/protocol/muc#user") {
                 var role = child.children[0].attrs.role;
@@ -113,6 +113,30 @@ cl.on('stanza',
                 roomRosters[fromRoom][fromNick] = role;
               }
             });
+            
+            if(vidStatus.started || vidStatus.elapsed !=0) {
+              
+              // the timeout here is to wait for the client to get fully
+              // connected. it's perhaps a bit more precise to fix this 
+              // in the client, but for now we'll just wait a second before
+              // we send the catchup message.
+              setTimeout(function() {
+                cl.send(function() {
+                  el = new xmpp.Element('message', {
+                    to: fromRoom,
+                    type: "groupchat",
+                  });
+
+                  var time = vidStatus.elapsed;
+
+                  if(vidStatus.started) {
+                    time += (Date.now() - vidStatus.startedAt);
+                  }
+
+                  return el.c('body').t("/video catchup " + Math.round(time/1000));
+                }());
+              }, 1000);
+            }
           }
           
         } else if(stanza.is('message')) {
@@ -124,7 +148,6 @@ cl.on('stanza',
             return;
           }
           
-          var vidStatus = roomVideoStatus[fromRoom];
           logger.info("status: " + JSON.stringify(vidStatus));
           if(message.indexOf("/video start")==0) {
             // don't do anything if the video is already going
@@ -173,8 +196,6 @@ cl.on('stanza',
         // 3. watch for chat messages. if not from a moderator, ignore
         //      if from a moderator, look for /video start and /video stop
         //      and /video time. Build a model to keep track of 
-        
-        
         // logger.info(stanza);
 	    });
 
