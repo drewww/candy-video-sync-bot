@@ -133,7 +133,13 @@ cl.on('stanza',
                     time += (Date.now() - vidStatus.startedAt);
                   }
 
-                  return el.c('body').t("/video catchup " + Math.round(time/1000));
+                  var msg = "/video catchup " + Math.round(time/1000);
+                  
+                  if(!vidStatus.started) {
+                   msg += " stop";
+                  }
+                  
+                  return el.c('body').t(msg);
                 }());
               }, 1000);
             }
@@ -203,6 +209,11 @@ cl.on('error',
       function(e) {
 	      logger.error(e);
       });
+
+process.on('uncaughtException', function (err) {
+  console.log('Caught exception: ' + err);
+});
+
       
 function getSecondsFromTime(timeStr) {
   var timePieces = timeStr.split(":");
