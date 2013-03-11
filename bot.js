@@ -26,14 +26,24 @@ var conf = {
   password: process.env.XMPP_PASSWORD,
   roomJids: JSON.parse(process.env.ROOM_JIDS),
   roomDomain: process.env.ROOM_DOMAIN,
-  roomNick: process.env.ROOM_NICK
+  roomNick: process.env.ROOM_NICK,
 }
 
 logger.info("started: " + JSON.stringify(conf));
 
 var cl = new xmpp.Client({ jid: conf.jid,
                            password: conf.password });
-                           
+
+
+// roomRosters is a map where the keys are
+// roomJids, and the values are a map where
+// its user jids -> role.
+var roomRosters = {};
+
+_.each(conf.roomJids, function(roomName) {
+  roomRosters[roomName + "@" + conf.roomDomain] = {};
+});
+
 cl.on('online', 
         function() {
           logger.info("connected to " + conf.jid);
@@ -61,6 +71,39 @@ cl.on('online',
 cl.on('stanza',
       function(stanza) {
         
+        // toss any message from the bot.
+        var fromPieces = stanza.attrs.from.split("/");
+        var fromNick;
+        if(fromPieces.length==1) {
+          // it's a subject message that comes direct from the room.
+          // nothing to do with it yet.
+          logger.info("room subject: " + stanza.getChild('subject').getText());
+          return;
+        } else if(fromPieces.length==2){
+          fromNick = fromPieces[1];
+          
+          if(fromNick==conf.roomNick) {
+            logger.info("throwing out message from ourselves");
+            return;
+          }
+        }
+        
+        if(stanza.is('presence')) {
+          // handle presence stanzas.
+          // presence stanzas are either signifying joining or leaving.
+          
+          if(stanza.attrs.type=="unavailable") {
+            // handle a leave message. 
+            logger.info(stanza.attrs.from + " left room.");
+          } else {
+            logger.info(stanza.attrs.from + " joined room.");
+          }
+          
+        } else if(stanza.is('message')) {
+          logger.info(stanza.attrs.from + ": " + stanza.getChild('body').getText());
+        }
+        
+        
         // steps to bot bliss:
         // we need to keep our own track of users in each room
         // when we log in, we get a bunch of presence messages. we need to 
@@ -76,7 +119,7 @@ cl.on('stanza',
         //      and /video time. Build a model to keep track of 
         
         
-        logger.info(stanza);
+        // logger.info(stanza);
 	    });
 
 cl.on('error',
