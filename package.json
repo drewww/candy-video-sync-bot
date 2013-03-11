@@ -1,0 +1,31 @@
+{
+	"name": "candy-video-sync-bot",
+	"version": "0.1.0",
+	"description": " video synchronization in concert with the video-embed candy plugin",
+	"contributors": [
+		{
+			"name": "Drew Harry",
+			"email": "drew.harry@gmail.com"
+		}
+	],
+
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/drewww/candy-video-sync-bot.git"
+	},
+
+	"scripts": {
+		"start": "node bot.js"
+	},
+
+	"dependencies" : {
+		"commander" : "*",
+		"underscore" : "*",
+		"node-xmpp" : "*",
+		"winston" : "*"
+	},
+
+	"engines": {
+    	"node": ">=0.8"
+  }
+}
