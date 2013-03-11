@@ -74,6 +74,9 @@ cl.on('stanza',
         // toss any message from the bot.
         var fromPieces = stanza.attrs.from.split("/");
         var fromNick;
+        
+        var fromRoom = fromPieces[0];
+        
         if(fromPieces.length==1) {
           // it's a subject message that comes direct from the room.
           // nothing to do with it yet.
@@ -97,10 +100,25 @@ cl.on('stanza',
             logger.info(stanza.attrs.from + " left room.");
           } else {
             logger.info(stanza.attrs.from + " joined room.");
+            
+            logger.info(stanza);
+            
+            _.each(stanza.children, function(child) {
+              if(child.attrs.xmlns=="http://jabber.org/protocol/muc#user") {
+                var role = child.children[0].attrs.role;
+                
+                // we're guaranteed for this to only happen once per user.
+                roomRosters[fromRoom][fromNick] = role;
+              }
+            })
           }
           
         } else if(stanza.is('message')) {
-          logger.info(stanza.attrs.from + ": " + stanza.getChild('body').getText());
+          var isMod = roomRosters[fromRoom][fromNick]=="moderator";
+
+          logger.info(stanza.attrs.from + ": " + stanza.getChild('body').getText() + " (mod: " + isMod + ")");
+          
+          
         }
         
         
