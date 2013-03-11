@@ -77,6 +77,7 @@ cl.on('stanza',
         var fromNick;
         
         var fromRoom = fromPieces[0];
+        var fromRoomShort = fromRoom.split("@")[0];
 
         var vidStatus = roomVideoStatus[fromRoom];
         
@@ -89,7 +90,7 @@ cl.on('stanza',
           fromNick = fromPieces[1];
           
           if(fromNick==conf.roomNick) {
-            logger.info("throwing out message from ourselves");
+            // logger.info("throwing out message from ourselves");
             return;
           }
         }
@@ -100,10 +101,10 @@ cl.on('stanza',
           
           if(stanza.attrs.type=="unavailable") {
             // handle a leave message. 
-            logger.info(stanza.attrs.from + " left room.");
+            // logger.info(stanza.attrs.from + " left room.");
             delete roomRosters[fromRoom][fromNick];
           } else {
-            logger.info(stanza.attrs.from + " joined room.");
+            // logger.info(stanza.attrs.from + " joined room.");
 
             _.each(stanza.children, function(child) {
               if(child.attrs.xmlns=="http://jabber.org/protocol/muc#user") {
@@ -139,6 +140,8 @@ cl.on('stanza',
                    msg += " stop";
                   }
                   
+                  logger.info("["+fromRoomShort+"] sent catchup: " + Math.round(time/1000) + "(in response to "+stanza.attrs.from+" joining)");
+                  
                   return el.c('body').t(msg);
                 }());
               }, 1000);
@@ -162,10 +165,12 @@ cl.on('stanza',
             vidStatus.started = true;
             vidStatus.startedAt = Date.now();
             logger.info(fromRoom + " video started");
+            logger.info("["+fromRoomShort+"] started");
           } else if(message.indexOf("/video stop")==0) {
             vidStatus.started = false;
             vidStatus.elapsed = (Date.now() - vidStatus.startedAt) + vidStatus.elapsed;
-            logger.info(fromRoom + " video paused");
+            
+            logger.info("["+fromRoomShort+"] at " + Math.round(vidStatus.elapsed/1000));
           } else if(message.indexOf("/video status")==0) {
             var curTime = vidStatus.elapsed;
             
@@ -173,7 +178,7 @@ cl.on('stanza',
               curTime += (Date.now() - vidStatus.startedAt);
             }
             
-            logger.info(fromRoom + ": " + Math.round(curTime/1000));
+            logger.info("["+fromRoomShort+"] stopped at " + Math.round(curTime/1000));
           } else if(message.indexOf("/video time")==0) {
             // handle time messages. if we set it to a specific time, 
             // set to playing, and set elapsed time to that time.
@@ -185,6 +190,8 @@ cl.on('stanza',
             vidStatus.started = true;
             vidStatus.elapsed = seconds*1000;
             vidStatus.startedAt = Date.now();
+            
+            logger.info("["+fromRoomShort+"] set time to " + seconds);
           }
         }
         
