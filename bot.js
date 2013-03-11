@@ -39,9 +39,11 @@ var cl = new xmpp.Client({ jid: conf.jid,
 // roomJids, and the values are a map where
 // its user jids -> role.
 var roomRosters = {};
+var roomVideoStatus = {};
 
 _.each(conf.roomJids, function(roomName) {
   roomRosters[roomName + "@" + conf.roomDomain] = {};
+  roomVideoStatus[roomName + "@" + conf.roomDomain] = {started:false, elapsed:0, startedAt:0}
 });
 
 cl.on('online', 
@@ -52,7 +54,6 @@ cl.on('online',
           setInterval(function() {
               cl.send(' ');
           }, 30000);
-          
           
           // connect to all the rooms specified
           _.each(conf.roomJids, function(roomName) {
@@ -98,6 +99,7 @@ cl.on('stanza',
           if(stanza.attrs.type=="unavailable") {
             // handle a leave message. 
             logger.info(stanza.attrs.from + " left room.");
+            delete roomRosters[fromRoom][fromNick];
           } else {
             logger.info(stanza.attrs.from + " joined room.");
             
@@ -110,15 +112,51 @@ cl.on('stanza',
                 // we're guaranteed for this to only happen once per user.
                 roomRosters[fromRoom][fromNick] = role;
               }
-            })
+            });
           }
           
         } else if(stanza.is('message')) {
           var isMod = roomRosters[fromRoom][fromNick]=="moderator";
-
-          logger.info(stanza.attrs.from + ": " + stanza.getChild('body').getText() + " (mod: " + isMod + ")");
+          var message = stanza.getChild('body').getText();
           
+          // toss non mod messages
+          if(!isMod) {
+            return;
+          }
           
+          var vidStatus = roomVideoStatus[fromRoom];
+          logger.info("status: " + JSON.stringify(vidStatus));
+          if(message.indexOf("/video start")==0) {
+            // don't do anything if the video is already going
+            if(vidStatus.started) return;
+            
+            vidStatus.started = true;
+            vidStatus.startedAt = Date.now();
+            logger.info(fromRoom + " video started");
+          } else if(message.indexOf("/video stop")==0) {
+            vidStatus.started = false;
+            vidStatus.elapsed = (Date.now() - vidStatus.startedAt) + vidStatus.elapsed;
+            logger.info(fromRoom + " video paused");
+          } else if(message.indexOf("/video status")==0) {
+            var curTime = vidStatus.elapsed;
+            
+            if(vidStatus.started) {
+              curTime += (Date.now() - vidStatus.startedAt);
+            }
+            
+            logger.info(fromRoom + ": " + Math.round(curTime/1000));
+          } else if(message.indexOf("/video time")==0) {
+            // handle time messages. if we set it to a specific time, 
+            // set to playing, and set elapsed time to that time.
+            
+            var commandPieces = message.split(" ");
+            
+            var seconds = getSecondsFromTime(commandPieces[2]);
+            
+            vidStatus.started = true;
+            vidStatus.elapsed = seconds*1000;
+            vidStatus.startedAt = Date.now();
+          }
         }
         
         
@@ -144,3 +182,28 @@ cl.on('error',
       function(e) {
 	      logger.error(e);
       });
+      
+function getSecondsFromTime(timeStr) {
+  var timePieces = timeStr.split(":");
+
+  var seconds = 0;
+
+  var counter = 0;
+  for(var i=timePieces.length-1; i>=0; i--) {
+    var field = parseInt(timePieces[i]);
+    switch(counter) {
+      case 0:
+        seconds += field;
+        break;
+      case 1:
+        seconds += 60*field;
+        break;
+      case 2:
+        seconds += 60*60*field;
+        break;
+    }
+    counter++;
+  }
+
+  return seconds;
+}
