@@ -122,28 +122,7 @@ cl.on('stanza',
               // in the client, but for now we'll just wait a second before
               // we send the catchup message.
               setTimeout(function() {
-                cl.send(function() {
-                  el = new xmpp.Element('message', {
-                    to: fromRoom,
-                    type: "groupchat",
-                  });
-
-                  var time = vidStatus.elapsed;
-
-                  if(vidStatus.started) {
-                    time += (Date.now() - vidStatus.startedAt);
-                  }
-
-                  var msg = "/video catchup " + Math.round(time/1000);
-                  
-                  if(!vidStatus.started) {
-                   msg += " stop";
-                  }
-                  
-                  logger.info("["+fromRoomShort+"] sent catchup: " + Math.round(time/1000) + "(in response to "+stanza.attrs.from+" joining)");
-                  
-                  return el.c('body').t(msg);
-                }());
+                sendCatchupUpdate(fromRoom, stanza.attrs.from);
               }, 1000);
             }
           }
@@ -259,4 +238,53 @@ function getSecondsFromTime(timeStr) {
   }
 
   return seconds;
+}
+
+
+function sendCatchupUpdate(fromRoom, forUser) {
+  // loop through all our rooms. for rooms that are currently started,
+  // send a catchup message
+  
+  // TODO do some cleverness to check if fromRoom is set. If it is, do this
+  // once. If it's not, loop through all known rooms and check if we should
+  // update.
+  
+  var rooms;
+  if(fromRoom!==undefined) {
+    rooms = [fromRoom];
+  } else {
+    rooms = Object.keys(roomRosters);
+  }
+  
+  _.each(rooms, function(room) {
+    var roomShort = room.split("@")[0];
+    var vidStatus = roomVideoStatus[room];
+    
+    cl.send(function() {
+      el = new xmpp.Element('message', {
+        to: room,
+        type: "groupchat",
+      });
+
+      var time = vidStatus.elapsed;
+
+      if(vidStatus.started) {
+        time += (Date.now() - vidStatus.startedAt);
+      }
+
+      var msg = "/video catchup " + Math.round(time/1000);
+
+      if(!vidStatus.started) {
+       msg += " stop";
+      }
+
+      if(forUser!==undefined) {
+        logger.info("["+roomShort+"] sent catchup: " + Math.round(time/1000) + " (in response to "+forUser+" joining)");
+      } else {
+        logger.info("["+roomShort+"] sent catchup: " + Math.round(time/1000) + " (periodic)");
+      }
+
+      return el.c('body').t(msg);
+    }());
+  });
 }
