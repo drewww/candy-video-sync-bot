@@ -15,7 +15,7 @@ var logger= new (winston.Logger)({
         new (winston.transports.Console)({
             timestamp:true,
             json:false,
-            level: "info"
+            level: "debug"
             })
     ],
     levels: winston.config.syslog.levels
@@ -45,6 +45,8 @@ _.each(conf.roomJids, function(roomName) {
   roomRosters[roomName + "@" + conf.roomDomain] = {};
   roomVideoStatus[roomName + "@" + conf.roomDomain] = {started:false, elapsed:0, startedAt:0}
 });
+
+var catchupInterval = setInterval(sendCatchupUpdate, 10000);
 
 cl.on('online', 
         function() {
@@ -259,6 +261,13 @@ function sendCatchupUpdate(fromRoom, forUser) {
   _.each(rooms, function(room) {
     var roomShort = room.split("@")[0];
     var vidStatus = roomVideoStatus[room];
+    
+    if(!vidStatus.started && vidStatus.elapsed==0) {
+      // drop out if the video in this room isn't running and has no elapsed
+      // time.
+      logger.debug("Ignoring room update that has no vid running: " + JSON.stringify(vidStatus) + "; room: " + roomShort);
+      return;
+    }
     
     cl.send(function() {
       el = new xmpp.Element('message', {
