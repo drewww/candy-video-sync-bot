@@ -15,7 +15,7 @@ var logger= new (winston.Logger)({
         new (winston.transports.Console)({
             timestamp:true,
             json:false,
-            level: "debug"
+            level: "info"
             })
     ],
     levels: winston.config.syslog.levels
@@ -157,7 +157,7 @@ cl.on('stanza',
             return;
           }
           
-          logger.info("status: " + JSON.stringify(vidStatus));
+          logger.debug("status on mod message: " + JSON.stringify(vidStatus));
           if(message.indexOf("/video start")==0) {
             // don't do anything if the video is already going
             if(vidStatus.started) return;
@@ -170,7 +170,7 @@ cl.on('stanza',
             vidStatus.started = false;
             vidStatus.elapsed = (Date.now() - vidStatus.startedAt) + vidStatus.elapsed;
             
-            logger.info("["+fromRoomShort+"] at " + Math.round(vidStatus.elapsed/1000));
+            logger.info("["+fromRoomShort+"] stopped at " + Math.round(vidStatus.elapsed/1000));
           } else if(message.indexOf("/video status")==0) {
             var curTime = vidStatus.elapsed;
             
@@ -178,7 +178,7 @@ cl.on('stanza',
               curTime += (Date.now() - vidStatus.startedAt);
             }
             
-            logger.info("["+fromRoomShort+"] stopped at " + Math.round(curTime/1000));
+            logger.info("["+fromRoomShort+"] video at " + Math.round(curTime/1000) + " (" + (vidStatus.started ? "started" : "stopped") + ")");
           } else if(message.indexOf("/video time")==0) {
             // handle time messages. if we set it to a specific time, 
             // set to playing, and set elapsed time to that time.
@@ -219,6 +219,7 @@ cl.on('error',
 
 process.on('uncaughtException', function (err) {
   console.log('Caught exception: ' + err);
+  console.trace();
 });
 
       
