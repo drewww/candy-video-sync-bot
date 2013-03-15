@@ -169,6 +169,7 @@ cl.on('stanza',
           } else if(message.indexOf("/video stop")==0) {
             vidStatus.started = false;
             vidStatus.elapsed = (Date.now() - vidStatus.startedAt) + vidStatus.elapsed;
+            vidStatus.startedAt = 0;
             
             logger.info("["+fromRoomShort+"] stopped at " + Math.round(vidStatus.elapsed/1000));
           } else if(message.indexOf("/video status")==0) {
@@ -187,11 +188,23 @@ cl.on('stanza',
             
             var seconds = getSecondsFromTime(commandPieces[2]);
             
-            vidStatus.started = true;
-            vidStatus.elapsed = seconds*1000;
-            vidStatus.startedAt = Date.now();
+            var start = true;
+            if(commandPieces.length==4) {
+              if(commandPieces[3]=="stop") {
+                start = false;
+              }
+            }
             
-            logger.info("["+fromRoomShort+"] set time to " + seconds);
+            vidStatus.started = start;
+            vidStatus.elapsed = seconds*1000;
+            
+            if(start) {
+              vidStatus.startedAt = Date.now();
+            } else {
+              vidStatus.startedAt = 0;
+            }
+            
+            logger.info("["+fromRoomShort+"] set time to " + seconds + " ("+(vidStatus.started ? "started" : "stopped")+")");
           }
         }
         
