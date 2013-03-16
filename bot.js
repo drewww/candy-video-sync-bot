@@ -43,7 +43,7 @@ var roomVideoStatus = {};
 
 _.each(conf.roomJids, function(roomName) {
   roomRosters[roomName + "@" + conf.roomDomain] = {};
-  roomVideoStatus[roomName + "@" + conf.roomDomain] = {started:false, elapsed:0, startedAt:0}
+  roomVideoStatus[roomName + "@" + conf.roomDomain] = {started:false, elapsed:0, startedAt:0};
 });
 
 var catchupInterval = setInterval(sendCatchupUpdate, 10000);
@@ -86,7 +86,7 @@ cl.on('stanza',
         if(fromPieces.length==1) {
           // it's a subject message that comes direct from the room.
           // nothing to do with it yet.
-          logger.info("room subject: " + stanza.getChild('subject').getText());
+          logger.info("room subject: " + stanza.getChild('subject'));
           return;
         } else if(fromPieces.length==2){
           fromNick = fromPieces[1];
@@ -186,9 +186,17 @@ cl.on('stanza',
             }
             
             logger.info("["+fromRoomShort+"] set time to " + seconds + " ("+(vidStatus.started ? "started" : "stopped")+")");
+          } else if(message.indexOf("/video done")==0) {
+            // basically clear the state on this room's video, which should
+            // desynchronize clients. on the client side, this will turn
+            // the video back into an unloaded state. on the server, we
+            // wipe video state.
+            
+            roomVideoStatus[fromRoom] = {started:false, elapsed:0, startedAt:0};
+            
+            logger.info("["+fromRoomShort+"] ----- video done -----");
           }
         }
-        
         
         // steps to bot bliss:
         // we need to keep our own track of users in each room
